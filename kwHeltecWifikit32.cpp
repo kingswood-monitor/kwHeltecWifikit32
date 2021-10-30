@@ -1,3 +1,5 @@
+// Wifi Kit 32 firmware
+
 #include <kwHeltecWifikit32.h>
 
 SSD1306AsciiWire oled;
