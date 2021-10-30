@@ -21,7 +21,8 @@
     "homepage": "https://github.com/kingswood-monitor/kwHeltecWifikit32",
     "dependencies": {
         "greiman/SSD1306Ascii": "^1.3.2",
-        "knolleary/PubSubClient": "^2.8"
+        "knolleary/PubSubClient": "^2.8",
+        "https://github.com/kingswood-monitor/kwTimer.git": "^1.0"
     },
     "frameworks": "arduino",
     "platforms": "espressif32"
