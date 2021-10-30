@@ -1,4 +1,4 @@
-// Wifi Kit 32 firmware
+// Wifi Kit 32 firmware 2
 
 #include <kwHeltecWifikit32.h>
 
