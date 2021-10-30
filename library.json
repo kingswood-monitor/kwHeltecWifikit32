@@ -15,7 +15,7 @@
         "email": "richlyon@mac.com",
         "url": "https://github.com/kingswood-monitor",
         "maintainer": true
-      },
+      }
     ],
     "license": "MIT",
     "homepage": "https://github.com/kingswood-monitor/kwHeltecWifikit32",
