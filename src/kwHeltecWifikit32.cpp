@@ -5,12 +5,13 @@
 SSD1306AsciiWire oled;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+kwTime timeSync;
 
 char buf[10] = {0};
+char timeString[8] = {0};
 
 uint8_t col0 = 0;  // First value column
 uint8_t col1 = 0;  // Last value column.
-uint8_t rows;      // Rows per line.
 
 // PUBLIC ///////////////////////////////////////////////////////////////////////
 
@@ -79,6 +80,25 @@ void kwHeltecWifikit32::initMTTQ(IPAddress mqtt_host, std::string topic_root)
     didInitialiseMTTQ = true;
 }
 
+// Initialise TimeSync
+void kwHeltecWifikit32::initTimeSync()
+{
+    timeSync.init();
+}
+
+// 
+bool kwHeltecWifikit32::isMidnight()
+{
+    if (timeStatus() != timeNotSet)
+    {
+        return hour() == 0 && minute() == 0 && second() == 0;
+    }
+    else
+    {
+        return false;
+    }
+} 
+
 // Register data topic
 uint8_t kwHeltecWifikit32::registerDataTopic(std::string fieldName, std::string units, std::string topicName, std::string sensorName)
 {
@@ -98,8 +118,6 @@ uint8_t kwHeltecWifikit32::registerMetaTopic(std::string topicName)
 }
 
 // Publish 
-
-void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }
 
 void kwHeltecWifikit32::publish(uint8_t fieldID, uint16_t data)
 {
@@ -225,4 +243,10 @@ void kwHeltecWifikit32::mqttCallback(char* topic, byte* payload, unsigned int le
 {
     
 }
+
+
+// HELPERS ///////////////////////////////////////////////////////////////
+
+void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }
+
 
