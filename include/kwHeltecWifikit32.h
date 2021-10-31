@@ -1,19 +1,33 @@
 #ifndef H_KWHELTECWIFIKIT32
 #define H_KWHELTECWIFIKIT32
 
-#define MQTT_SOCKET_TIMEOUT 1
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <RTClib.h>
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiWire.h"
-#include <kwTime.h>
 
+// OLED pins
 #define I2C_ADDRESS 0x3C
-#define MQTT_RECONNECT_TIME_SECONDS 5
-#define MAX_TOPIC_BUFFER_LEN 50 // <- remove
+#define PIN_RST 16
+#define PIN_SDA 4
+#define PIN_SCL 15
+
+// CHECK THESE !!!     <-----------------------------
+#define MQTT_SOCKET_TIMEOUT 1
+#define MQTT_RECONNECT_TIME_SECONDS 1
+
+struct HeltecConfig
+{
+  const char *ssid = {};
+  const char *pwd = {};
+  IPAddress mqtt_host;
+  const char *topicRoot = {};
+  bool rotateDisplay = false;
+  const char *firmwareVersion = {};
+};
 
 struct dataField
 {
@@ -27,21 +41,18 @@ class kwHeltecWifikit32
 public:
   kwHeltecWifikit32();
   
-  // Display methods
-  void initDisplay(int pin_rst, int pin_sda, int pin_scl);
-  void initDisplay(int pin_rst, int pin_sda, int pin_scl, bool doRemap);
-  void display();
+  // Data field methods
+  uint8_t registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName);
+  uint8_t registerMetaTopic(std::string topicName);
+  
+  // Initialise
+  void init(HeltecConfig config);
   
   // WiFi / MQTT methods
-  bool initWiFi(const char* SSID, const char* PWD);
-  void initMTTQ(IPAddress mqtt_host, std::string topic_root);
-  uint8_t registerDataTopic(std::string fieldName, std::string units, std::string topicName, std::string sensorName);
-  uint8_t registerMetaTopic(std::string topicName);
   void publish(uint8_t fieldID, uint16_t data);
   void publish(uint8_t fieldID, float data);
   
-  // Real Time methods
-  void initTimeSync();
+  // Real Time Clock methods
   bool isMidnight();
   
   void run();
@@ -51,17 +62,20 @@ public:
   std::vector<std::string> metaTopics;
   std::vector<std::string> commands;
   uint8_t statusTopicID;
+  
+  bool hasRTC = false;       // true if an RTC module is present
+  bool rtcWasAdjusted = false; // true if the RTC has been initialised with a time
 
 private:
   void getMacAddress();
+  bool initWiFi(const char* SSID, const char* PWD);
+  void initMTTQ(IPAddress mqtt_host, std::string topic_root);
   void updateSystemStatus(std::string statusMessage);
   static void mqttCallback(char* topic, byte* payload, unsigned int length);
   boolean mqttReconnect();
   void setUpForm();
 
-  bool didSetUpForm = false;
-
-  std::string topicRoot = "kw_sensors";
+  std::string topicRoot = {};
   bool didInitialiseMTTQ = false;
   long lastReconnectAttempt = 0;
   uint8_t maxRows;
