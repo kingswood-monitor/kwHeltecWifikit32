@@ -1,17 +1,18 @@
-// Wifi Kit 32 firmware 2
-
 #include <kwHeltecWifikit32.h>
-
-SSD1306AsciiWire oled;
-WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
-kwTime timeSync;
+#include <kwNeoTimer.h>
 
 char buf[10] = {0};
 char timeString[8] = {0};
 
 uint8_t col0 = 0;  // First value column
 uint8_t col1 = 0;  // Last value column.
+
+SSD1306AsciiWire oled;
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+RTC_DS1307 ds1307;
+
+kwNeoTimer updateTimeTimer = kwNeoTimer();
 
 // PUBLIC ///////////////////////////////////////////////////////////////////////
 
@@ -23,33 +24,81 @@ kwHeltecWifikit32::kwHeltecWifikit32()
     pinMode(LED, OUTPUT);
 }
 
-// Initalise the OLED display
-void kwHeltecWifikit32::initDisplay(int pin_rst, int pin_sda, int pin_scl)
+// Initalise the display, WiFi, and MQTT 
+void kwHeltecWifikit32::init(HeltecConfig config)
 {
-    initDisplay(pin_rst, pin_sda, pin_scl, false);
-}
-
-void kwHeltecWifikit32::initDisplay(int pin_rst, int pin_sda, int pin_scl, bool doRemap)
-{  
-    Wire.begin(pin_sda, pin_scl);
+    Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(400000L);
 
-    oled.begin(&Adafruit128x64, I2C_ADDRESS, pin_rst);
-
-    // NOTE - this gives a 4 x 13 usable display
-    // oled.setRow(row * oled.fontRows());
-    // oled.setCol(col * oled.fontWidth());
+    hasRTC = ds1307.begin(&Wire);
+    if (hasRTC && ! ds1307.isrunning())
+    {
+        ds1307.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        rtcWasAdjusted = true;
+    } 
+    
+    oled.begin(&Adafruit128x64, I2C_ADDRESS, PIN_RST);
     oled.setFont(Callibri15);
     oled.setLetterSpacing(2);
     maxRows = oled.displayHeight() / (oled.fontRows() * 8); // 4
     maxCols = oled.displayWidth() / oled.fontWidth();       // 13
+    oled.displayRemap(config.rotateDisplay);
 
-    oled.displayRemap(doRemap);
-    oled.clear();
-    
-    updateSystemStatus(deviceID);
-    delay(5000);
+    setUpForm();
+
+    initWiFi(config.ssid, config.pwd);
+    initMTTQ(config.mqtt_host, config.topicRoot);
+
+    updateTimeTimer.set(1000);
 }
+
+
+// Display the labeled data at the specified row
+void kwHeltecWifikit32::setUpForm()
+{
+    oled.clear();
+    // Setup form and find longest labels
+    for (uint8_t i = 0; i < dataTopics.size(); ++i)
+    {
+        const char *fieldName = dataTopics[i].fieldName.c_str();
+        oled.println(fieldName);
+        uint8_t w = oled.strWidth(fieldName);
+        col0 = col0 < w ? w : col0; 
+    }
+
+    col0 += 3;
+    col1 = col0 + oled.strWidth("4000") + 2;
+
+    // Print units
+    for (uint8_t i = 0; i < dataTopics.size(); ++i)
+    {
+        oled.setCursor(col1 + 1, i * oled.fontRows());
+        oled.print(dataTopics[i].units.c_str());
+    }
+}
+
+
+// Register data topic
+uint8_t kwHeltecWifikit32::registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName)
+{
+    std::string topicString = topicRoot + "/" + "data" + "/" + topicName + "/" + sensorName + "/" + deviceID;
+    dataTopics.push_back(dataField{topicString, fieldName, units});
+    
+    return dataTopics.size() - 1;
+}
+
+// register meta topic
+uint8_t kwHeltecWifikit32::registerMetaTopic(std::string topicName)
+{
+    std::string topicString = topicRoot + "/" + "meta" + "/" + topicName + "/" + deviceID;
+    metaTopics.push_back(topicString);
+
+    return metaTopics.size() - 1;
+}
+
+
+
+
 
 // Initialise the Wifi - return true if successful
 bool kwHeltecWifikit32::initWiFi(const char* wifi_ssid, const char* wifi_pwd)
@@ -80,42 +129,19 @@ void kwHeltecWifikit32::initMTTQ(IPAddress mqtt_host, std::string topic_root)
     didInitialiseMTTQ = true;
 }
 
-// Initialise TimeSync
-void kwHeltecWifikit32::initTimeSync()
-{
-    timeSync.init();
-}
-
-// 
+// Return true if it is midnight
 bool kwHeltecWifikit32::isMidnight()
 {
-    if (timeStatus() != timeNotSet)
+    if (hasRTC)
     {
-        return hour() == 0 && minute() == 0 && second() == 0;
+        DateTime now = ds1307.now();
+        return now.hour() == 0 && now.minute() == 0 && now.second() == 0;
     }
     else
     {
         return false;
     }
 } 
-
-// Register data topic
-uint8_t kwHeltecWifikit32::registerDataTopic(std::string fieldName, std::string units, std::string topicName, std::string sensorName)
-{
-    std::string topicString = topicRoot + "/" + "data" + "/" + topicName + "/" + sensorName + "/" + deviceID;
-    dataTopics.push_back(dataField{topicString, fieldName, units});
-    
-    return dataTopics.size() - 1;
-}
-
-// register meta topic
-uint8_t kwHeltecWifikit32::registerMetaTopic(std::string topicName)
-{
-    std::string topicString = topicRoot + "/" + "meta" + "/" + topicName + "/" + deviceID;
-    metaTopics.push_back(topicString);
-
-    return metaTopics.size() - 1;
-}
 
 // Publish 
 
@@ -137,37 +163,6 @@ void kwHeltecWifikit32::publish(uint8_t fieldID, float data)
 
     clearValue( fieldID * oled.fontRows());
     oled.print(data, 1);
-}
-
-void kwHeltecWifikit32::display()
-{
-    if (!didSetUpForm) { setUpForm() ;}
-}
-
-// Display the labeled data at the specified row
-void kwHeltecWifikit32::setUpForm()
-{
-    oled.clear();
-    // Setup form and find longest labels
-    for (uint8_t i = 0; i < dataTopics.size(); ++i)
-    {
-        const char *fieldName = dataTopics[i].fieldName.c_str();
-        oled.println(fieldName);
-        uint8_t w = oled.strWidth(fieldName);
-        col0 = col0 < w ? w : col0; 
-    }
-
-    col0 += 3;
-    col1 = col0 + oled.strWidth("4000") + 2;
-
-    // Print units
-    for (uint8_t i = 0; i < dataTopics.size(); ++i)
-    {
-        oled.setCursor(col1 + 1, i * oled.fontRows());
-        oled.print(dataTopics[i].units.c_str());
-    }
-
-    didSetUpForm = true;
 }
 
 // Run - keep MQTT alive and process commands
@@ -196,6 +191,15 @@ void kwHeltecWifikit32::run()
         {   
             mqttClient.loop();
         }
+    }
+
+    // Update clock
+    if (updateTimeTimer.repeat())
+    {
+        DateTime now = ds1307.now();
+        char buf[12];
+        sprintf(buf, "%02d:%02d:%02d", now.hour(), now.minute(), now.second());
+        updateSystemStatus(buf);
     }
 }
 
@@ -248,5 +252,3 @@ void kwHeltecWifikit32::mqttCallback(char* topic, byte* payload, unsigned int le
 // HELPERS ///////////////////////////////////////////////////////////////
 
 void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }
-
-

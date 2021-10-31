@@ -1,29 +1,31 @@
 {
-    "name": "kwHeltecWifikit32",
-    "version": "1.0.2",
-    "description": "Ardiono firmware for a Heltec WiFi Kit 32 to facilitate coding of sensor devices.",
-    "keywords": "sensor, arduino, wifi, mqtt",
-    "repository":
-    {
-      "type": "git",
-      "url": "https://github.com/kingswood-monitor/kwHeltecWifikit32.git"
-    },
-    "authors":
-    [
-      {
-        "name": "Richard Lyon",
-        "email": "richlyon@mac.com",
-        "url": "https://github.com/kingswood-monitor",
-        "maintainer": true
-      }
-    ],
-    "license": "MIT",
-    "homepage": "https://github.com/kingswood-monitor/kwHeltecWifikit32",
-    "dependencies": {
-        "greiman/SSD1306Ascii": "^1.3.2",
-        "knolleary/PubSubClient": "^2.8",
-        "kwTime": "https://github.com/kingswood-monitor/kwTime#master"
-    },
-    "frameworks": "arduino",
-    "platforms": "espressif32"
-  }
+	"name": "kwHeltecWifikit32",
+	"version": "1.0.3",
+	"description": "Ardiono firmware for a Heltec WiFi Kit 32 to facilitate coding of sensor devices.",
+	"keywords": "sensor, arduino, wifi, mqtt",
+	"repository":
+	{
+		"type": "git",
+		"url": "https://github.com/kingswood-monitor/kwHeltecWifikit32.git"
+	},
+	"authors":
+	[
+		{
+			"name": "Richard Lyon",
+			"email": "richlyon@mac.com",
+			"url": "https://github.com/kingswood-monitor",
+			"maintainer": true
+		}
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/kingswood-monitor/kwHeltecWifikit32",
+	"dependencies": 
+	{
+		"greiman/SSD1306Ascii": "^1.3.2",
+		"knolleary/PubSubClient": "^2.8",
+		"kwTime": "https://github.com/kingswood-monitor/kwTime#master",
+		"kwNeoTimer": "https://github.com/kingswood-monitor/kwNeoTimer#master"
+	},
+	"frameworks": "arduino",
+	"platforms": "espressif32"
+}
