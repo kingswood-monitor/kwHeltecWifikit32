@@ -36,6 +36,14 @@ struct dataField
   std::string units;
 };
 
+struct Command
+{
+  std::string commandString;
+  std::string payload;
+  bool didReceive;
+};
+
+
 class kwHeltecWifikit32 
 {
 public:
@@ -45,6 +53,11 @@ public:
   // Data field methods
   uint8_t registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName);
   uint8_t registerMetaTopic(std::string topicName);
+  uint8_t registerCommandTopic(std::string commandName);
+
+  // Command topics
+  bool didReceiveCommand(uint8_t commandID);
+
   
   // Initialise
   void init();
@@ -64,9 +77,11 @@ public:
   void run();
   
   char deviceID[16] = {0};
+
   std::vector<dataField> dataTopics;
   std::vector<std::string> metaTopics;
-  std::vector<std::string> commands;
+  std::vector<Command> commandTopics;
+
   uint8_t statusTopicID;
   
   bool hasRTC = false;       // true if an RTC module is present

@@ -87,7 +87,7 @@ void kwHeltecWifikit32::setUpForm()
 uint8_t kwHeltecWifikit32::registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName)
 {
     std::string topicString = config.topicRoot + "/" + "data" + "/" + topicName + "/" + sensorName + "/" + deviceID;
-    dataTopics.push_back(dataField{topicString, fieldName, units});
+    dataTopics.push_back( dataField{ topicString, fieldName, units } );
     
     return dataTopics.size() - 1;
 }
@@ -99,6 +99,14 @@ uint8_t kwHeltecWifikit32::registerMetaTopic(std::string topicName)
     metaTopics.push_back(topicString);
 
     return metaTopics.size() - 1;
+}
+
+uint8_t kwHeltecWifikit32::registerCommandTopic(std::string commandName)
+{
+    std::string commandString = config.topicRoot + "/" + "command" + "/" + commandName + "/" + deviceID;
+    commandTopics.push_back( Command{ commandString, "", false } );
+
+    return commandTopics.size() - 1;
 }
 
 // Initialise the Wifi - return true if successful
@@ -251,6 +259,10 @@ boolean kwHeltecWifikit32::mqttReconnect()
         digitalWrite(LED, HIGH);
         
         mqttClient.publish(statusTopic, "ONLINE");
+        for (int i=0; i < commandTopics.size(); i++)
+        { 
+            mqttClient.subscribe(commandTopics[i].commandString.c_str()); 
+        }
         lastReconnectAttempt = millis();
     }
 
@@ -260,7 +272,20 @@ boolean kwHeltecWifikit32::mqttReconnect()
 // MQTT callback function
 void kwHeltecWifikit32::mqttCallback(char* topic, byte* payload, unsigned int length)
 {
-    
+    std::string command(reinterpret_cast< const char* >(payload), length);
+    // std::string topic(reinterpret_cast< std::string >(topic));
+
+    // for (int i=0; i < commandTopics.size(); i++)
+    // {
+    //     commandTopics[i].didReceive = (commandTopics[i].commandString == topic)
+    // }
+
+    // Serial.printf("Command received... length %d command %s \n", length, command);
+    Serial.println(topic);
+    Serial.println(command.c_str());
+
+
+
 }
 
 
