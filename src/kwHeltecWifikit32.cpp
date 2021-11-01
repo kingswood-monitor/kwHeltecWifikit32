@@ -17,7 +17,7 @@ kwNeoTimer updateTimeTimer = kwNeoTimer();
 // PUBLIC ///////////////////////////////////////////////////////////////////////
 
 // kwHeltecWifikit32 constructor
-kwHeltecWifikit32::kwHeltecWifikit32()
+kwHeltecWifikit32::kwHeltecWifikit32( HeltecConfig config ) : config{ config }
 {
     getMacAddress();
     statusTopicID = registerMetaTopic("status");
@@ -25,7 +25,7 @@ kwHeltecWifikit32::kwHeltecWifikit32()
 }
 
 // Initalise the display, WiFi, and MQTT 
-void kwHeltecWifikit32::init(HeltecConfig config)
+void kwHeltecWifikit32::init()
 {
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setClock(400000L);
@@ -36,7 +36,7 @@ void kwHeltecWifikit32::init(HeltecConfig config)
         ds1307.adjust(DateTime(F(__DATE__), F(__TIME__)));
         rtcWasAdjusted = true;
     } 
-    
+
     oled.begin(&Adafruit128x64, I2C_ADDRESS, PIN_RST);
     oled.setFont(Callibri15);
     oled.setLetterSpacing(2);
@@ -44,10 +44,15 @@ void kwHeltecWifikit32::init(HeltecConfig config)
     maxCols = oled.displayWidth() / oled.fontWidth();       // 13
     oled.displayRemap(config.rotateDisplay);
 
+    // topicRoot = config.topicRoot;
+
     setUpForm();
 
-    initWiFi(config.ssid, config.pwd);
-    initMTTQ(config.mqtt_host, config.topicRoot);
+    updateSystemStatus( deviceID );
+    delay( 5000 );
+
+    initWiFi( config.ssid, config.pwd );
+    initMTTQ( config.mqtt_host );
 
     updateTimeTimer.set(1000);
 }
@@ -81,7 +86,7 @@ void kwHeltecWifikit32::setUpForm()
 // Register data topic
 uint8_t kwHeltecWifikit32::registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName)
 {
-    std::string topicString = topicRoot + "/" + "data" + "/" + topicName + "/" + sensorName + "/" + deviceID;
+    std::string topicString = config.topicRoot + "/" + "data" + "/" + topicName + "/" + sensorName + "/" + deviceID;
     dataTopics.push_back(dataField{topicString, fieldName, units});
     
     return dataTopics.size() - 1;
@@ -90,15 +95,11 @@ uint8_t kwHeltecWifikit32::registerField(std::string fieldName, std::string unit
 // register meta topic
 uint8_t kwHeltecWifikit32::registerMetaTopic(std::string topicName)
 {
-    std::string topicString = topicRoot + "/" + "meta" + "/" + topicName + "/" + deviceID;
+    std::string topicString = config.topicRoot + "/" + "meta" + "/" + topicName + "/" + deviceID;
     metaTopics.push_back(topicString);
 
     return metaTopics.size() - 1;
 }
-
-
-
-
 
 // Initialise the Wifi - return true if successful
 bool kwHeltecWifikit32::initWiFi(const char* wifi_ssid, const char* wifi_pwd)
@@ -121,9 +122,8 @@ bool kwHeltecWifikit32::initWiFi(const char* wifi_ssid, const char* wifi_pwd)
 }
 
 // Initialise MTTQ
-void kwHeltecWifikit32::initMTTQ(IPAddress mqtt_host, std::string topic_root)
+void kwHeltecWifikit32::initMTTQ(IPAddress mqtt_host)
 {
-    topicRoot = topic_root;
     mqttClient.setServer(mqtt_host, 1883);
     mqttClient.setCallback(mqttCallback);
     didInitialiseMTTQ = true;
@@ -150,9 +150,6 @@ void kwHeltecWifikit32::publish(uint8_t fieldID, uint16_t data)
     sprintf(buf, "%d", data);
     const char* topic = dataTopics[fieldID].topicString.c_str();
     mqttClient.publish(topic, buf);
-
-    clearValue( fieldID * oled.fontRows());
-    oled.print(data, 1);
 }
 
 void kwHeltecWifikit32::publish(uint8_t fieldID, float data)
@@ -160,9 +157,35 @@ void kwHeltecWifikit32::publish(uint8_t fieldID, float data)
     sprintf(buf, "%.1f", data);
     const char* topic = dataTopics[fieldID].topicString.c_str();
     mqttClient.publish(topic, buf);
+}
 
-    clearValue( fieldID * oled.fontRows());
-    oled.print(data, 1);
+// void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }
+void clearValue(uint8_t row) {oled.clear( col0, col1, row, row) ; }
+
+void kwHeltecWifikit32::update(uint8_t fieldID, uint16_t data)
+{
+    clearValue( fieldID * oled.fontRows() );
+    oled.print( data, 1 );
+}
+
+void kwHeltecWifikit32::update(uint8_t fieldID, float data)
+{
+    clearValue( fieldID * oled.fontRows() );
+    oled.print( data, 1 );
+}
+
+void kwHeltecWifikit32::update(uint8_t fieldID, const char* message)
+{
+    clearValue( fieldID * oled.fontRows() );
+    oled.print( message );
+}
+
+// Display system status
+void kwHeltecWifikit32::updateSystemStatus(std::string statusMessage)
+{
+    oled.setCursor(0, 3 * oled.fontRows()),
+    oled.clearToEOL();
+    oled.print(statusMessage.c_str());
 }
 
 // Run - keep MQTT alive and process commands
@@ -214,14 +237,6 @@ void kwHeltecWifikit32::getMacAddress()
     strcpy(deviceID, theAddress.c_str());
 }
 
-// Display system status
-void kwHeltecWifikit32::updateSystemStatus(std::string statusMessage)
-{
-    oled.setRow(3 * oled.fontRows());
-    oled.setCol(0);
-    oled.print(statusMessage.c_str());
-    oled.clearToEOL();
-}
 
 // Rconnect MQTT
 boolean kwHeltecWifikit32::mqttReconnect() 
@@ -249,6 +264,3 @@ void kwHeltecWifikit32::mqttCallback(char* topic, byte* payload, unsigned int le
 }
 
 
-// HELPERS ///////////////////////////////////////////////////////////////
-
-void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }

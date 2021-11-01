@@ -21,12 +21,12 @@
 
 struct HeltecConfig
 {
-  const char *ssid = {};
-  const char *pwd = {};
+  const char *ssid;
+  const char *pwd;
   IPAddress mqtt_host;
-  const char *topicRoot = {};
-  bool rotateDisplay = false;
-  const char *firmwareVersion = {};
+  bool rotateDisplay;
+  const char *firmwareVersion;
+  std::string topicRoot;
 };
 
 struct dataField
@@ -39,14 +39,15 @@ struct dataField
 class kwHeltecWifikit32 
 {
 public:
-  kwHeltecWifikit32();
+
+  kwHeltecWifikit32( HeltecConfig config );
   
   // Data field methods
   uint8_t registerField(std::string fieldName, std::string units, std::string topicName, std::string sensorName);
   uint8_t registerMetaTopic(std::string topicName);
   
   // Initialise
-  void init(HeltecConfig config);
+  void init();
   
   // WiFi / MQTT methods
   void publish(uint8_t fieldID, uint16_t data);
@@ -55,6 +56,11 @@ public:
   // Real Time Clock methods
   bool isMidnight();
   
+  // Display methods
+  void update( uint8_t fieldID, uint16_t data );
+  void update( uint8_t fieldID, float data );
+  void update( uint8_t fieldID, const char* message );
+
   void run();
   
   char deviceID[16] = {0};
@@ -67,15 +73,16 @@ public:
   bool rtcWasAdjusted = false; // true if the RTC has been initialised with a time
 
 private:
+
+  HeltecConfig config;
   void getMacAddress();
   bool initWiFi(const char* SSID, const char* PWD);
-  void initMTTQ(IPAddress mqtt_host, std::string topic_root);
+  void initMTTQ(IPAddress mqtt_host);
   void updateSystemStatus(std::string statusMessage);
   static void mqttCallback(char* topic, byte* payload, unsigned int length);
   boolean mqttReconnect();
   void setUpForm();
 
-  std::string topicRoot = {};
   bool didInitialiseMTTQ = false;
   long lastReconnectAttempt = 0;
   uint8_t maxRows;
