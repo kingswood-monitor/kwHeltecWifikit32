@@ -5,8 +5,9 @@
 #include "SSD1306AsciiWire.h"
 #include <Arduino.h>
 #include <PubSubClient.h>
-#include <RTClib.h>
+#include <TimeLib.h>
 #include <WiFi.h>
+#include <WiFiUdp.h>
 #include <Wire.h>
 
 // OLED pins
@@ -66,15 +67,12 @@ class kwHeltecWifikit32 {
   std::vector<std::string> commands;
   uint8_t                  statusTopicID;
 
-  bool hasRTC = false;  // true if an RTC module is present
-  bool rtcWasAdjusted =
-      false;  // true if the RTC has been initialised with a time
-
  private:
   HeltecConfig config;
   void         getMacAddress();
   bool         initWiFi( const char* SSID, const char* PWD );
   void         initMTTQ( IPAddress mqtt_host );
+  void         initTime();
   void         updateSystemStatus( std::string statusMessage );
   static void  mqttCallback( char* topic, byte* payload, unsigned int length );
   boolean      mqttReconnect();
@@ -86,6 +84,8 @@ class kwHeltecWifikit32 {
   uint8_t maxCols;
 };
 
-void clearValue( uint8_t row );
+void   clearValue( uint8_t row );
+time_t getNtpTime();
+void   sendNTPpacket( IPAddress& address );
 
 #endif
