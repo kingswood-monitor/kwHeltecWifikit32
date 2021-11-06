@@ -7,6 +7,7 @@
 #include <PubSubClient.h>
 #include <TimeLib.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
 
@@ -20,9 +21,15 @@
 #define MQTT_SOCKET_TIMEOUT         1
 #define MQTT_RECONNECT_TIME_SECONDS 1
 
+struct accessPoint {
+  char* ssid;
+  char* pwd;
+};
+
 struct HeltecConfig {
-  const char* ssid;
-  const char* pwd;
+  accessPoint ap1;
+  accessPoint ap2;
+  accessPoint ap3;
   IPAddress   mqtt_host;
   bool        rotateDisplay;
   const char* firmwareVersion;
@@ -70,7 +77,7 @@ class kwHeltecWifikit32 {
  private:
   HeltecConfig config;
   void         getMacAddress();
-  bool         initWiFi( const char* SSID, const char* PWD );
+  bool         initWiFi();
   void         initMTTQ( IPAddress mqtt_host );
   void         initTime();
   void         updateSystemStatus( std::string statusMessage );

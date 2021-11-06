@@ -8,6 +8,7 @@ uint8_t col1 = 0;  // Last value column.
 
 SSD1306AsciiWire  oled;
 WiFiClient        wifiClient;
+WiFiMulti         wifiMulti;
 PubSubClient      mqttClient( wifiClient );
 WiFiUDP           Udp;
 unsigned int      localPort = 8888;  // local port to listen for UDP packets
@@ -46,7 +47,7 @@ void kwHeltecWifikit32::init()
   updateSystemStatus( deviceID );
   delay( 5000 );
 
-  initWiFi( config.ssid, config.pwd );
+  initWiFi();
   initMTTQ( config.mqtt_host );
   initTime();
 }
@@ -106,53 +107,16 @@ uint8_t kwHeltecWifikit32::registerMetaTopic( std::string topicName )
 }
 
 // Initialise the Wifi - return true if successful
-bool kwHeltecWifikit32::initWiFi( const char* wifi_ssid, const char* wifi_pwd )
+bool kwHeltecWifikit32::initWiFi()
 {
   updateSystemStatus( "[->] WiFi" );
 
-  int n = WiFi.scanNetworks();
-  if ( n == 0 )
-  {
-    Serial.println( "No networks found" );
-  } else
-  {
-    Serial.printf( "%d networks found\n", n );
-    for ( int i = 0; i < n; i++ )
-    {
-      Serial.printf(
-          "%d: %s (%d) %s\n", i + 1, WiFi.SSID( i ), WiFi.RSSI( i ),
-          ( WiFi.encryptionType( i ) == WIFI_AUTH_OPEN ) ? " " : "*" );
-    }
-  }
+  wifiMulti.addAP( config.ap1.ssid, config.ap1.pwd );
+  wifiMulti.addAP( config.ap2.ssid, config.ap2.pwd );
+  wifiMulti.addAP( config.ap3.ssid, config.ap3.pwd );
 
-  WiFi.mode( WIFI_STA );
-  WiFi.disconnect();
+  while ( wifiMulti.run() != WL_CONNECTED ) { ; }
 
-  WiFi.begin( wifi_ssid, wifi_pwd );
-  WiFi.printDiag( Serial );
-  Serial.printf( "Connecting to %s with %s", wifi_ssid, wifi_pwd );
-
-  while ( WiFi.status() != WL_CONNECTED )
-  {
-    Serial.print( "." );
-    switch ( WiFi.status() )
-    {
-      case ( WL_NO_SSID_AVAIL ):
-        updateSystemStatus( "WiFi: SSID not found" );
-        break;
-
-      case ( WL_CONNECT_FAILED ):
-        updateSystemStatus( "WiFi: connect failed" );
-        break;
-
-      case ( WL_DISCONNECTED ):
-        updateSystemStatus( "WiFi: disconnected" );
-        break;
-    }
-    delay( 500 );
-  };
-
-  Serial.println( "Connected" );
   updateSystemStatus( "WiFi: connected" );
 
   delay( 500 );
