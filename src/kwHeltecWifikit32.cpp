@@ -41,8 +41,6 @@ void kwHeltecWifikit32::init()
   maxCols = oled.displayWidth() / oled.fontWidth();          // 13
   oled.displayRemap( config.rotateDisplay );
 
-  // topicRoot = config.topicRoot;
-
   setUpForm();
 
   updateSystemStatus( deviceID );
@@ -112,13 +110,51 @@ bool kwHeltecWifikit32::initWiFi( const char* wifi_ssid, const char* wifi_pwd )
 {
   updateSystemStatus( "[->] WiFi" );
 
+  int n = WiFi.scanNetworks();
+  if ( n == 0 )
+  {
+    Serial.println( "No networks found" );
+  } else
+  {
+    Serial.printf( "%d networks found\n", n );
+    for ( int i = 0; i < n; i++ )
+    {
+      Serial.printf(
+          "%d: %s (%d) %s\n", i + 1, WiFi.SSID( i ), WiFi.RSSI( i ),
+          ( WiFi.encryptionType( i ) == WIFI_AUTH_OPEN ) ? " " : "*" );
+    }
+  }
+
+  WiFi.mode( WIFI_STA );
   WiFi.disconnect();
-  WiFi.mode( WIFI_MODE_STA );
-  WiFi.begin( wifi_ssid );
 
-  while ( WiFi.status() != WL_CONNECTED ) { delay( 500 ); };
+  WiFi.begin( wifi_ssid, wifi_pwd );
+  WiFi.printDiag( Serial );
+  Serial.printf( "Connecting to %s with %s", wifi_ssid, wifi_pwd );
 
-  updateSystemStatus( "WiFi OK" );
+  while ( WiFi.status() != WL_CONNECTED )
+  {
+    Serial.print( "." );
+    switch ( WiFi.status() )
+    {
+      case ( WL_NO_SSID_AVAIL ):
+        updateSystemStatus( "WiFi: SSID not found" );
+        break;
+
+      case ( WL_CONNECT_FAILED ):
+        updateSystemStatus( "WiFi: connect failed" );
+        break;
+
+      case ( WL_DISCONNECTED ):
+        updateSystemStatus( "WiFi: disconnected" );
+        break;
+    }
+    delay( 500 );
+  };
+
+  Serial.println( "Connected" );
+  updateSystemStatus( "WiFi: connected" );
+
   delay( 500 );
 
   return WiFi.status() == WL_CONNECTED;
@@ -156,7 +192,6 @@ void kwHeltecWifikit32::publish( uint8_t fieldID, float data )
   mqttClient.publish( topic, buf );
 }
 
-// void clearValue(uint8_t row) {oled.clear(col0, col1, row, row + row - 1); }
 void clearValue( uint8_t row ) { oled.clear( col0, col1, row, row ); }
 
 void kwHeltecWifikit32::update( uint8_t fieldID, uint16_t data )
@@ -280,7 +315,8 @@ time_t getNtpTime()
     if ( size >= NTP_PACKET_SIZE )
     {
       Serial.println( "Receive NTP Response" );
-      Udp.read( packetBuffer, NTP_PACKET_SIZE );  // read packet into the buffer
+      Udp.read( packetBuffer,
+                NTP_PACKET_SIZE );  // read packet into the buffer
       unsigned long secsSince1900;
       // convert four bytes starting at location 40 to a long integer
       secsSince1900 = (unsigned long)packetBuffer[40] << 24;
