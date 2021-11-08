@@ -31,8 +31,7 @@ struct HeltecConfig {
   const char* firmwareVersion;
 };
 
-struct dataField {
-  std::string topicString;
+struct displayField {
   std::string fieldName;
   std::string units;
 };
@@ -44,29 +43,27 @@ class kwHeltecWifikit32 {
   // Initialise
   void init();
 
-  // WiFi / MQTT methods
-  void publish( uint8_t fieldID, uint16_t data );
-  void publish( uint8_t fieldID, float data );
-
   // Real Time Clock methods
   bool isMidnight();
 
   // Display methods
-  void update( uint8_t fieldID, uint16_t data );
-  void update( uint8_t fieldID, float data );
-  void update( uint8_t fieldID, const char* message );
+  uint8_t addDisplayField( displayField field );
+  void    update( uint8_t fieldID, uint16_t data );
+  void    update( uint8_t fieldID, float data );
+  void    update( uint8_t fieldID, const char* message );
 
   void run();
 
   char deviceID[16] = { 0 };
 
  private:
-  HeltecConfig config;
-  void         getMacAddress();
-  bool         initWiFi();
-  void         initTime();
-  void         updateSystemStatus( std::string statusMessage );
-  void         setUpForm();
+  HeltecConfig              config;
+  std::vector<displayField> displayFields;
+  void                      getMacAddress();
+  bool                      initWiFi();
+  void                      initTime();
+  void                      updateSystemStatus( std::string statusMessage );
+  void                      setUpForm();
 };
 
 void   initDisplay( bool isRotated );

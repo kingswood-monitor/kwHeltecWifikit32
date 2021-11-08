@@ -1,6 +1,6 @@
 {
 	"name": "kwHeltecWifikit32",
-	"version": "1.0.8",
+	"version": "1.0.9",
 	"description": "Ardiono firmware for a Heltec WiFi Kit 32 to facilitate coding of sensor devices.",
 	"keywords": "sensor, arduino, wifi, mqtt",
 	"repository":
